@@ -13,6 +13,7 @@ The R-CNN methodology as described by Ross Girshick (and others) is used here. T
 3. **SVM classification**: the convnet output is finalled fed into numerous SVMs for classification. One SVM is required for each class. Each SVM can then give a score as to how likely a region is to be of a particular class.
 
 
+
 # Roadmap
 ___
 
@@ -22,7 +23,7 @@ I split the project develop into several major phases. Each phase introduces a m
 
 Getting out a minimally viable but structurally sound product here is important. The goal here is to work on a basic system that can detect and identify traffic lights in a given image. I implement Ross Girshick's (and others) R-CNN method here.
 
-- [ ] Data collection (at least a few hundred images of traffic lights)
+- [ ] Basic data collection (at least a few hundred images of traffic lights)
 - [ ] Region proposals using Felzenszwalb's image segmentation algorithm
 - [ ] Build upon a pretrained convnet
 - [ ] Training a single SVM to recognize whether or not a traffic light exists in an image (binary classification)
@@ -30,10 +31,11 @@ Getting out a minimally viable but structurally sound product here is important.
 ## Phase 2
 
 - [ ] Training multiple SVMs to recognize the different states of traffic lights (e.g. red light, yellow light, green light)
+- [ ] Refine data and training process; consider low-light environments, different weather, partial obstruction (by a tree, for example)
 
 ## Phase 3
 
-- [ ] Look into fast video processing techniques and attempting to implement real-time detection
+- [ ] Look into fast video processing techniques and implement real-time detection (perhaps at the speed of at least once per second)
 
 ## Phase 4
 
