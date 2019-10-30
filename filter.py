@@ -1,14 +1,19 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
 
 # separates the image by yellow colors
 def filter_yellow_color(img):
     shape = img.shape
     filtered = np.full((shape[:2]), False)
 
-    green_to_red_threshold = 0.6
-    blue_to_red_threshold = 0.5
+    min_rgb = [60, 30, 0]
+    green_to_red_min = 0.52
+    green_to_red_max = 0.83
+    blue_to_green_min = 0.0
+    blue_to_green_max = 0.73
+
     for y in range(shape[0]):
         for x in range(shape[1]):
             pixel = img[y][x]
@@ -17,11 +22,42 @@ def filter_yellow_color(img):
             # which are primarily a bright yellow
             # yellow colors are formed when there is
             # an equal balance of red and green and little blue
-            if (pixel[0] > pixel[2] and pixel[1] > pixel[2]
-                and pixel[1] / pixel[0] > green_to_red_threshold
-                and pixel[2] / pixel[0] < blue_to_red_threshold):
+
+            if np.all(np.greater(pixel, min_rgb)):
+                green_to_red = pixel[1] / pixel[0]
+                blue_to_green = pixel[2] / pixel[1]
+                if (green_to_red >= green_to_red_min and
+                    green_to_red <= green_to_red_max and
+                    blue_to_green >= blue_to_green_min and
+                    blue_to_green <= blue_to_green_max):
                     filtered[y][x] = True
     return filtered
+
+def rgb_to_hue(rgb):
+    norm = rgb / 255.0
+    c_max = np.argmax(norm)
+    c_min = np.argmin(norm)
+    delta = norm[c_max] - norm[c_min]
+    if delta == 0:
+        return 0
+    elif c_max == 0:
+        return 60 * (((norm[1] - norm[2]) / delta) % 6)
+    elif c_max == 1:
+        return 60 * (((norm[2] - norm[0]) / delta) + 2)
+    elif c_max == 2:
+        return 60 * (((norm[0] - norm[1]) / delta) + 4)
+
+def rgb_img_to_hue(img):
+    return np.apply_along_axis(rgb_to_hue, 2, img)
+
+# Sets all pixels that do not fall in the specified hue range to black.
+def apply_hue_filter(img, min, max):
+    hues = rgb_img_to_hue(img)
+    shape = img.shape
+    for y in range(shape[0]):
+        for x in range(shape[1]):
+            if hues[y][x] < min or hues[y][x] > max:
+                img[y][x] = [0, 0, 0]
 
 def filter_to_image(filter):
     filter_shape = filter.shape
@@ -48,6 +84,7 @@ def remove_noise(filter):
                         num_true += 1
             if num_true >= 5:
                 filtered[y][x] = True
+    """
     # uses a flood fill to remove small patches of yellow
     visited = np.full(shape, False)
     flood_remove_threshold = 16
@@ -70,6 +107,7 @@ def remove_noise(filter):
         # right cell
         if c[0] < shape[1] - 1 and not visited[c[0] + 1][c[1]]:
             cells.append((c[0] + 1, c[1]))
+    """
 
     return filtered
 
@@ -92,28 +130,45 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         print('No image specified')
     else:
-        img = plt.imread(sys.argv[1])
+        img = np.asarray(Image.open(sys.argv[1]))
+
         print('Image shape:', img.shape)
         print('Image dtype:', img.dtype)
-        print('Copying image')
-
-
-
-        new_img = np.copy(img)
-        print('Applying filter')
-
-        filtered = filter_yellow_color(new_img)
 
         f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 8))
         ax1.imshow(img)
         ax1.axis('off')
 
-        ax2.imshow(filter_to_image(filtered))
+        img2 = np.copy(img)
+        filter = filter_yellow_color(img2)
+
+        ax2.imshow(filter_to_image(filter))
         ax2.axis('off')
 
-        filtered = remove_noise(filtered)
-        filtered = remove_noise(filtered)
-        ax3.imshow(filter_to_image(filtered))
-        ax3.axis('off')
+        #filtered = remove_noise(filtered)
+        #filtered = remove_noise(filtered)
+        #ax3.imshow(filter_to_image(filtered))
+        #ax3.axis('off')
 
         plt.show()
+        """img = np.asarray(Image.open(sys.argv[1]))
+
+        print('Image shape:', img.shape)
+        print('Image dtype:', img.dtype)
+
+        f, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(14, 8))
+        ax1.imshow(img)
+        ax1.axis('off')
+
+        img2 = np.copy(img)
+        apply_hue_filter(img2, 40, 46)
+
+        ax2.imshow(img2)
+        ax2.axis('off')
+
+        #filtered = remove_noise(filtered)
+        #filtered = remove_noise(filtered)
+        #ax3.imshow(filter_to_image(filtered))
+        #ax3.axis('off')
+
+        plt.show()"""
