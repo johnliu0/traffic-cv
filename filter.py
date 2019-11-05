@@ -1,3 +1,4 @@
+import convnet
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,7 +35,7 @@ def propose_boxes(img):
     for region in regionprops(segments):
         if region.area > 30:
             min_y, min_x, max_y, max_x = region.bbox
-            
+
             # regions should contain at least some specified ratio of yellow pixels
             num_in_yellow_mask = 0
             for y in range(min_y, max_y):
@@ -132,8 +133,13 @@ if __name__ == '__main__':
 
         felzen_img, rects, mask1, mask2, mask3 = propose_boxes(img)
         axes[0, 2].imshow(felzen_img)
+        img_regions = []
         for rect in rects:
             axes[0, 1].add_patch(rect)
+            img_regions.append(img[rect.get_xy()[1]:(rect.get_xy()[1] + rect.get_height()), rect.get_xy()[0]:(rect.get_xy()[0] + rect.get_width())].resize((150, 150), Image.NEAREST))
+
+        print(img_regions)
+
         axes[0, 2].axis('off')
 
         axes[0, 2].axis('off')

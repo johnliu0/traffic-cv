@@ -7,6 +7,7 @@ from keras.preprocessing import image
 target_size = (150, 150)
 
 x_train = []
+
 num_augmented = 2
 
 for i in range(12):
@@ -15,6 +16,8 @@ for i in range(12):
         x_train.append(imgs[j].flatten())
 
 x_train = np.asarray(x_train)
+
+print(x_train)
 
 svm = OneClassSVM(gamma='auto')
 svm.fit(x_train)

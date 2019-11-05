@@ -11,7 +11,8 @@ data_gen = image.ImageDataGenerator(
     shear_range=0.1,
     zoom_range=0.3,
     horizontal_flip=True,
-    fill_mode='nearest')
+    fill_mode='nearest',
+    rescale=1./255)
 
 def generate(
     img_path,
