@@ -14,25 +14,28 @@ conv_base = VGG16(
     include_top=False,
     input_shape=IMG_SIZE)
 
-home = expanduser('~')
-for i in range(81):
-    print(f'Processing image: light_{i}.png')
-    img = PILImage.open(f'{home}/Google Drive/tcv/images/traffic_lights/light_{i}.png')
+def predict(img):
+    return conv_base.predict(img).flatten()
 
-    # resize image to target size
-    img = img.resize(IMG_SIZE[:2])
-
-    # turn PIL image into numpy array
-    img_data = image.img_to_array(img)
-
-    # normalize data from 0-255 to 0-1
-    img_data /= 255.0
-
-    # add a batch axis
-    img_data.resize((1,) + img_data.shape)
-
-    # extract features from image with VGG16
-    prediction = conv_base.predict(img_data).flatten()
-    feature_vector_length = prediction.shape[0]
-    print(prediction)
-    print(feature_vector_length)
+# home = expanduser('~')
+# for i in range(81):
+#     print(f'Processing image: light_{i}.png')
+#     img = PILImage.open(f'{home}/Google Drive/tcv/images/traffic_lights/light_{i}.png')
+#
+#     # resize image to target size
+#     img = img.resize(IMG_SIZE[:2])
+#
+#     # turn PIL image into numpy array
+#     img_data = image.img_to_array(img)
+#
+#     # normalize data from 0-255 to 0-1
+#     img_data /= 255.0
+#
+#     # add a batch axis
+#     img_data.resize((1,) + img_data.shape)
+#
+#     # extract features from image with VGG16
+#     prediction = conv_base.predict(img_data).flatten()
+#     feature_vector_length = prediction.shape[0]
+#     print(prediction)
+#     print(feature_vector_length)

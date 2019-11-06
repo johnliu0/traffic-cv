@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 import matplotlib.pyplot as plt
 from keras.preprocessing import image
 
@@ -30,9 +31,25 @@ def generate(
         i += 1
         if i >= num_imgs:
             break
-    return augmentations
+    return np.asarray(augmentations)
 
+def show_augmentations(img_path, target_size):
+    """Shows various augmentations of a particular image."""
+    img = image.load_img(img_path, target_size=target_size)
+    x = image.img_to_array(img)
+    x = x.reshape((1,) + x.shape)
 
+    i = 1
+    fig, ax = plt.subplots(4, 5)
+    ax[0, 0].imshow(image.array_to_img(img))
+    ax[0, 0].axis('off')
+    for batch in data_gen.flow(x, batch_size=1):
+        ax[i // 5, i % 5].axis('off')
+        ax[i // 5, i % 5].imshow(image.array_to_img(batch[0]))
+        i += 1
+        if i >= 4 * 5:
+            break
+    plt.show()
 
 
 
