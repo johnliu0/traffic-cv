@@ -1,24 +1,39 @@
+"""Entry point for the application.
+
+Run python main.py -h for help on all the commands available. This project is
+available on GitHub at https://github.com/johnliu4/traffic-cv.
+"""
+
+import configparser
+import argparse
 import re
 
-def start_cmd_line():
-    while True:
-        # prompt user input
-        print('--> ', end='');
-        cmd = input().strip()
-        if len(cmd) == 0:
-            continue
+def load_config():
+    """Loads the config file.
 
-        # break user input into tokens
-        cmd_tokens = re.split(r'\s+', cmd)
+    A default config file is provided in the root directory of this project.
+    Modify the file as you wish.
 
-        if cmd_tokens[0] == 'detect':
-            if len(cmd_tokens) != 2:
-                print('\'detect\' takes in only one argument: image file path')
-                continue
-            print(cmd_tokens[1])
-        else:
-            print(f'Unknown command \'{cmd_tokens[0]}\'')
+    Raises:
+        IOError: A key-value pair in the config file is missing.
+    """
+    config = configparser.ConfigParser()
+    config.read('config')
 
+    if 'DEFAULT' in config:
+        print('hello')
+
+
+    with open('config', 'w') as configfile:
+        config.write(configfile)
 
 if __name__ == '__main__':
-    start_cmd_line();
+    load_config()
+
+    parser = argparse.ArgumentParser(description='Welcome to TrafficCV by John Liu!')
+    args = parser.parse_args()
+    subparsers = parser.add_subparsers(help='sub-command help')
+
+    # command: train, for training the SVM classifier
+    parser_train = subparsers.add_parser('train', help='train help')
+    #start_cmd_line();

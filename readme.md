@@ -12,7 +12,13 @@ The R-CNN methodology as described by Ross Girshick (and others) is used here. T
 
 3. **SVM classification**: the convnet output is finalled fed into numerous SVMs for classification. One SVM is required for each class. Each SVM can then give a score as to how likely a region is to be of a particular class.
 
+# File Structure
 
+`main.py` Entry point.
+`region.py` Proposes object regions.
+`convnet.py` CNN model used for feature extraction.
+`classifier.py` SVM model used for object classification.
+`augment.py` Provides data augmentation tools for training.
 
 # Roadmap
 ___
