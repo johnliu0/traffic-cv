@@ -1,0 +1,13 @@
+# Default configuration settings for TrafficCV.
+# If you want to create your own configuration, create a file called
+# .config and put your custom settings there. This config file follows the
+# .ini format; put [DEFAULT] in the file on its own line before any settings.
+# Quotes are interpreted literally; do not put them in unless you want quotes.
+# You may use ~ as a reference to the home directory of the current user.
+
+[DEFAULT]
+# directory for images of traffic lights used to train the SVM classifier
+trainingimgsdir = /data/training_imgs
+
+# directory where machine learning model weights are saved
+modelsdir = /data/models

@@ -16,7 +16,7 @@ def load_config():
     global models_dir
 
     config = configparser.ConfigParser()
-    config.read('config.ini')
+    config.read('.config')
     sect = config['DEFAULT']
 
     training_imgs_dir = expanduser(sect.get('trainingimgsdir', '/data/traffic_lights'))
