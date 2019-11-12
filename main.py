@@ -4,36 +4,29 @@ Run python main.py -h for help on all the commands available. This project is
 available on GitHub at https://github.com/johnliu4/traffic-cv.
 """
 
-import configparser
+import config
 import argparse
-import re
-
-def load_config():
-    """Loads the config file.
-
-    A default config file is provided in the root directory of this project.
-    Modify the file as you wish.
-
-    Raises:
-        IOError: A key-value pair in the config file is missing.
-    """
-    config = configparser.ConfigParser()
-    config.read('config')
-
-    if 'DEFAULT' in config:
-        print('hello')
-
-
-    with open('config', 'w') as configfile:
-        config.write(configfile)
+import ai
+from os import path
 
 if __name__ == '__main__':
-    load_config()
+    config.load_config()
 
     parser = argparse.ArgumentParser(description='Welcome to TrafficCV by John Liu!')
-    args = parser.parse_args()
-    subparsers = parser.add_subparsers(help='sub-command help')
+    subparsers = parser.add_subparsers(dest='subcmd', help='commands available')
 
-    # command: train, for training the SVM classifier
-    parser_train = subparsers.add_parser('train', help='train help')
-    #start_cmd_line();
+    # command: train; for training the SVM classifier
+    parser_train = subparsers.add_parser('train', help='trains the system to detect traffic lights in an image given training samples')
+
+    # command: predict; for predicting traffic lights given an input image
+    parser_predict = subparsers.add_parser('predict', help='attempts to find all traffic lights in an image')
+    parser_predict.add_argument('--path', help='path to image', required=True)
+
+    args = parser.parse_args()
+
+    print(args)
+
+    if args.subcmd == 'train':
+        ai.train()
+    elif args.subcmd == 'predict':
+        ai.predict(path.expanduser(args.path))
