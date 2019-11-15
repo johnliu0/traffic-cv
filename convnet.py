@@ -14,8 +14,9 @@ conv_base = VGG16(
     include_top=False,
     input_shape=IMG_SIZE)
 
-def predict(img):
+def extract_features(img):
     return conv_base.predict(img).flatten()
+
 
 # home = expanduser('~')
 # for i in range(81):
