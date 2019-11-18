@@ -1,39 +1,79 @@
 import augment
 import convnet
+import config
 import numpy as np
 import matplotlib.pyplot as plt
+import re
+from random import randint
 from joblib import dump as export_weights, load as load_weights
-from os.path import expanduser
 from sklearn.svm import OneClassSVM
 from keras.preprocessing import image
 from PIL import Image as PILImage
+from os.path import expanduser, join
+from os import walk
+
+from sklearn.svm import SVC
 
 home = expanduser('~')
-weights_file_name = f'{home}/Google Drive/tcv/svm_weights.joblib'
-target_size = (150, 150)
-svm = OneClassSVM(gamma='auto')
+svm = SVC(kernel='linear')
 
 def train():
+    """Trains an SVM to classify traffic lights.
+
+    Positive and negative images are trained with target values of 1 and 0
+    respectively. The SVM takes in a feature vector from the pretrained
+    convolutional base and outputs a scalar. Outputs past a certain set
+    threshold should signify that the feature vector extracted from the image
+    indicates that the image is indeed a traffic light.
+    """
+
     global svm
 
-    num_augmentations = 1
+    # collect all positive and negative training images
+    positive_imgs = []
+    negative_imgs = []
+    for (dirpath, dirnames, filenames) in walk(config.training_positives_dir):
+        positive_imgs.extend(filenames)
+    for (dirpath, dirnames, filenames) in walk(config.training_negatives_dir):
+        negative_imgs.extend(filenames)
+
+    num_augmentations = 100
     x_train = []
-    for i in range(175):
-        print(f'Loading light_{i}.jpg')
-        imgs = augment.generate(f'{home}/Google Drive/tcv/images/traffic_lights/light_{i}.png', target_size=target_size, num_imgs=num_augmentations)
-        conv_outputs = []
-        for j in range(num_augmentations):
-            conv_output = convnet.extract_features(imgs[j].reshape((1,) + imgs[j].shape))
-            conv_outputs.append(conv_output)
-        x_train.extend(conv_outputs)
+    y_train = []
+    num_extracted = 0
+    print('Starting feature extraction')
+    print('Total number of images after augmentation:', num_augmentations * (len(positive_imgs) + len(negative_imgs)))
+    for positive_img in positive_imgs:
+        imgs = augment.generate(join(config.training_positives_dir, positive_img), target_size=config.convnet_image_input_size, num_imgs=num_augmentations)
+        for i in range(num_augmentations):
+            conv_output = convnet.extract_features(imgs[i].reshape((1,) + imgs[i].shape))
+            x_train.append(conv_output)
+            y_train.append(1)
+        #
+        # img = image.load_img(join(config.training_positives_dir, positive_img))
+        # img = img.resize(config.convnet_image_input_size)
+        # img_arr = image.img_to_array(img)
+        # conv_output = convnet.extract_features(img_arr.reshape((1, ) + img_arr.shape))
+        # x_train.append(conv_output)
+        # y_train.append(1)
+
+    for negative_img in negative_imgs:
+        imgs = augment.generate(join(config.training_negatives_dir, negative_img), target_size=config.convnet_image_input_size, num_imgs=num_augmentations)
+        for i in range(num_augmentations):
+            conv_output = convnet.extract_features(imgs[i].reshape((1,) + imgs[i].shape))
+            x_train.append(conv_output)
+            y_train.append(0)
 
     x_train = np.asarray(x_train)
-    svm.fit(x_train)
-    export_weights(svm, weights_file_name)
+    y_train = np.asarray(y_train)
+    print(x_train.shape)
+    print('Training SVM')
+    svm.fit(x_train, y_train)
+    export_weights(svm, join(config.models_dir, 'svm_weights.joblib'))
 
 def load():
     global svm
-    svm = load_weights(weights_file_name)
+    svm = load_weights(join(config.models_dir, 'svm_weights.joblib'))
     # img = PILImage.open(f'{home}/Desktop/test_image.png')
     # img = img.convert('RGB')
     # img = img.resize((150, 150))

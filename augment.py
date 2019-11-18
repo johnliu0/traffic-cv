@@ -6,11 +6,11 @@ from keras.preprocessing import image
 # data augmentation with Keras ImageDataGenerator
 
 data_gen = image.ImageDataGenerator(
-    rotation_range=10,
-    width_shift_range=0.1,
-    height_shift_range=0.1,
-    shear_range=0.1,
-    zoom_range=0.3,
+    rotation_range=15,
+    width_shift_range=0.15,
+    height_shift_range=0.15,
+    shear_range=0.15,
+    zoom_range=0.15,
     horizontal_flip=True,
     fill_mode='nearest',
     rescale=1./255)

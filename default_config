@@ -7,7 +7,8 @@
 
 [DEFAULT]
 # directory for images of traffic lights used to train the SVM classifier
-trainingimgsdir = /data/training_imgs
+training_positives_dir = /data/positives
+training_negatives_dir = /data/negatives
 
 # directory where machine learning model weights are saved
 modelsdir = /data/models
