@@ -52,61 +52,78 @@ def propose_boxes(img):
     img_yellow_mask = filter_yellow_color(img)
     print(f'Done in {(time_ns() - timer) / 1000000000}s.')
 
-    # segmented_img = color.label2rgb(segments, image=img, kind='avg')
-    # plt.imshow(image.array_to_img(segmented_img))
-    # plt.show()
-
-    ax, ((f1, f2), (f3, f4)) = plt.subplots(2, 2)
-    f1.axis('off')
-    f2.axis('off')
-    f1.imshow(image.array_to_img(img))
-    seg_img = image.array_to_img(color.label2rgb(segments, image=img, kind='avg'))
-    f2.imshow(seg_img)
-    f3.imshow(seg_img)
+    # converts regions from skimage.measure.regionprops into BoundingBox objects
+    print('Generating initial bounding boxes.')
+    timer = time_ns()
+    boxes = []
     for region in regionprops(segments):
         min_y, min_x, max_y, max_x = region.bbox
-        f3.add_patch(patches.Rectangle(
-            (min_x, min_y),
-            max_x - min_x,
-            max_y - min_y,
+        if np.any(img_yellow_mask[min_y:max_y,min_x:max_x]):
+            boxes.append(BoundingBox(region, img))
+    print(f'Done in {(time_ns() - timer) / 1000000000}s.')
+
+    ax, (f1, f2) = plt.subplots(1, 2)
+    f1.axis('off')
+    f1.imshow(image.array_to_img(img))
+    f2.axis('off')
+    f2.imshow(image.array_to_img(img))
+
+    for box in boxes:
+        f1.add_patch(patches.Rectangle(
+            (box.min_x, box.min_y),
+            box.width,
+            box.height,
+            linewidth=1,
+            fill=False,
+            color='red'))
+
+
+    for i in range(len(boxes) - 2, 0, -1):
+        box1 = boxes[i]
+        box2 = boxes[i + 1]
+        if intersects(box1, box2):
+            box1.merge(box2)
+            boxes.pop(i + 1)
+
+
+    for box in boxes:
+        f2.add_patch(patches.Rectangle(
+            (box.min_x, box.min_y),
+            box.width,
+            box.height,
             linewidth=1,
             fill=False,
             color='red'))
 
     plt.show()
 
-
-    # converts regions from skimage.measure.regionprops into BoundingBox objects
-    print('Generating initial bounding boxes.')
-    timer = time_ns()
-    boxes = [BoundingBox(region, img) for region in regionprops(segments)]
-    print(f'Done in {(time_ns() - timer) / 1000000000}s.')
+    return boxes
 
     # box = boxes[0]
     # for j in range(len(boxes) - 1, -1, -1):
     #     if compute_iou(box, boxes[j]) > 0.1:
 
 
-    i = 0
-    for i in range(1500, len(boxes) - 1):
-        box1 = boxes[i]
-        box2 = boxes[i + 1]
-        ax, (f1, f2) = plt.subplots(1, 2)
-        f1.imshow(image.array_to_img(img[box1.min_y:box1.max_y, box1.min_x:box1.max_x]))
-        f1.axis('off')
-        f2.imshow(image.array_to_img(img[box2.min_y:box2.max_y, box2.min_x:box2.max_x]))
-        f2.axis('off')
-        print('color sim: ', compute_color_similarity(box1, box2))
-        plt.show()
-        # ax = plt.gca()
-        # ax.add_patch(patches.Rectangle(
-        #     (box.min_x, box.min_y),
-        #     box.width,
-        #     box.height,
-        #     linewidth=1,
-        #     fill=False,
-        #     color='red'))
-        # plt.show()
+    # i = 0
+    # for i in range(len(boxes) - 1):
+    #     box1 = boxes[i]
+    #     box2 = boxes[i + 1]
+    #     ax, (f1, f2) = plt.subplots(1, 2)
+    #     f1.imshow(image.array_to_img(img[box1.min_y:box1.max_y, box1.min_x:box1.max_x]))
+    #     f1.axis('off')
+    #     f2.imshow(image.array_to_img(img[box2.min_y:box2.max_y, box2.min_x:box2.max_x]))
+    #     f2.axis('off')
+    #     print('color sim: ', compute_color_similarity(box1, box2))
+    #     plt.show()
+    #     ax = plt.gca()
+    #     ax.add_patch(patches.Rectangle(
+    #         (box.min_x, box.min_y),
+    #         box.width,
+    #         box.height,
+    #         linewidth=1,
+    #         fill=False,
+    #         color='red'))
+    #     plt.show()
 
 
 
@@ -133,8 +150,6 @@ def propose_boxes(img):
     #                 num_in_yellow_mask += 1
     #     if num_in_yellow_mask < 20:
     #         boxes.pop(i)
-
-    return boxes
 
     # # propose regions
     # regions = []
@@ -215,8 +230,7 @@ def filter_yellow_color(img):
         whether or not a pixel is of a yellow hue (like the traffic lights in
         Toronto).
     """
-    shape = img.shape
-    filtered = np.full((shape[:2]), False)
+
     # these values were obtained manually
     # the colors of a traffic light generally seem to fit
     # within the below paramaters
@@ -228,23 +242,29 @@ def filter_yellow_color(img):
     blue_to_green_min = 0.0
     blue_to_green_max = 0.73
 
-    timer = time_ns()
+    # get the ratios of green to red and blue to green for all pixels
     green_to_red = img[:,:,1] / img[:,:,0]
     blue_to_green = img[:,:,2] / img[:,:,1]
-    print(green_to_red)
-    print((time_ns() - timer) / 1000000000)
 
-    timer = time_ns()
-    for y in range(shape[0]):
-        for x in range(shape[1]):
-            pixel = img[y][x]
-            filtered[y][x] = (
-                green_to_red[y][x] >= green_to_red_min and
-                green_to_red[y][x] <= green_to_red_max and
-                blue_to_green[y][x] >= blue_to_green_min and
-                blue_to_green[y][x] <= blue_to_green_max))
-    print((time_ns() - timer) / 1000000000)
-    return filtered
+    # mask for pixels that are in the accepted green to red ratio range
+    green_to_red_mask = np.bitwise_and(green_to_red >= green_to_red_min,
+        green_to_red <= green_to_red_max)
+
+    # mask for pixels that are in the accepted blue to green ratio range
+    blue_to_green_mask = np.bitwise_and(blue_to_green >= blue_to_green_min,
+        blue_to_green <= blue_to_green_max)
+
+    # mask for pixels that are at least the minimum rgb
+    min_rgb_mask = np.bitwise_and(
+        np.bitwise_and(img[:,:,0] > min_rgb[0], img[:,:,1] > min_rgb[1]),
+        img[:,:,2] > min_rgb[2])
+
+    # finally combine all previous filters to produce a yellow filter
+    filter = np.bitwise_and(
+        np.bitwise_and(green_to_red_mask, blue_to_green_mask),
+        min_rgb_mask)
+
+    return filter
 
 # converts a filter mask to image
 def filter_to_image(filter):
@@ -343,8 +363,43 @@ def compute_color_similarity(box1, box2):
 
     return score / 3
 
-def merge_boxes(box1, box2):
-    return BoundingBox(
+def intersects(box1, box2):
+    """Determines whether or not two boxes intersect.
+
+    Intersection is true only when the boxes share at least one pixel. Boxes
+    that are touching along their edges are not considered intersecting.
+
+    Returns:
+        A boolean representing whether or not two boxes intersect.
+    """
+
+    if ((box2.min_x > box1.min_x and box2.min_x < box1.max_x) or
+        (box1.min_x > box2.min_x and box1.min_x < box2.max_x)):
+        if ((box2.min_y > box1.min_y and box2.min_y < box1.max_y) or
+            (box1.min_y > box2.min_y and box1.min_y < box2.max_y)):
+                return True
+    return False
+
+def measure_region_fill(box1, box2):
+    """Computes how well two regions fit into eachother.
+
+    Returns:
+        A value between 0.0 and 1.0 specifying the ratio of the combined shape
+        area to the bounding box area.
+    """
+
+    min_x, min_y, max_x, max_y = fit_bounding_box(box1, box2)
+    return ((box1.region_area + box2.region_area)
+        / ((max_x - min_x) * (max_y - min_y)))
+
+def fit_bounding_box(box1, box2):
+    """Computes the minimum enclosing box of the two given boxes.
+
+    Returns:
+        (min_x, min_y, max_x, max_y)
+    """
+
+    return (
         min(box1.min_x, box2.min_x),
         min(box1.min_y, box2.min_y),
         max(box1.max_x, box2.max_x),
@@ -410,7 +465,7 @@ class BoundingBox:
         self.region_area = region.area
         self.color_histograms = compute_color_histograms(img[min_y:max_y,min_x:max_x], nbins=BoundingBox.color_hist_nbins, normalize=True)
 
-    def merge(box):
+    def merge(self, box):
         """Merges another BoundingBox into this object.
 
         Dimensions and min and max coordinates are expanded to fit both boxes.
@@ -424,15 +479,15 @@ class BoundingBox:
 
         self.min_x = min(self.min_x, box.min_x)
         self.min_y = min(self.min_y, box.min_y)
-        self.max_x = min(self.max_x, box.max_y)
-        self.max_y = min(self.max_y, box.max_x)
+        self.max_x = max(self.max_x, box.max_x)
+        self.max_y = max(self.max_y, box.max_y)
         self.width = self.max_x - self.min_x
         self.height = self.max_y - self.min_y
         self.area = self.width * self.height
         self.region_area += box.region_area
         self.color_histograms += box.color_histograms
-        for c in range(channels):
-            normalize_arr(self.color_histograms)
+        for c in range(self.color_histograms.shape[0]):
+            normalize_arr(self.color_histograms[c])
 
     def to_string(self):
         """Returns a string containing details about this BoundingBox.
