@@ -38,7 +38,7 @@ def train():
         negative_imgs.extend(filenames)
 
     num_pos_augmentations = 5
-    num_neg_augmentations = 8
+    num_neg_augmentations = 12
     x_train = []
     y_train = []
     num_extracted = 0

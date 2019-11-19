@@ -30,13 +30,30 @@ def predict(img_path):
     raw_img = image.load_img(img_path)
     img = image.img_to_array(raw_img)
     boxes = region.propose_boxes(img)
-    ax = plt.gca()
     detected_boxes = []
-    plt.imshow(image.array_to_img(raw_img))
+
+    ax, (f1, f2) = plt.subplots(1, 2)
+    f1.imshow(raw_img)
+    f1.set_xlabel('All')
+    f1.set_yticklabels([])
+    f1.set_xticklabels([])
+    f2.imshow(raw_img)
+    f2.set_xlabel('Predicted')
+    f2.set_yticklabels([])
+    f2.set_xticklabels([])
+
     counter = 0
     for idx, box in enumerate(boxes):
         box_img = img[box.min_y : box.max_y, box.min_x : box.max_x]
         box_img = transform.resize(box_img, config.convnet_image_input_size + (3,))
+        f1.add_patch(patches.Rectangle(
+            (box.min_x, box.min_y),
+            box.width,
+            box.height,
+            linewidth=1,
+            color='red',
+            fill=False
+        ))
 
         box_img_reshaped = box_img.reshape((1,) + box_img.shape)
         convnet_output = convnet.extract_features(box_img_reshaped)
@@ -44,7 +61,7 @@ def predict(img_path):
         svm_output = classifier.predict(convnet_output)
         if svm_output == 1:
             counter += 1
-            ax.add_patch(patches.Rectangle(
+            f2.add_patch(patches.Rectangle(
                 (box.min_x, box.min_y),
                 box.width,
                 box.height,
@@ -133,6 +150,8 @@ def mine(img_path):
 
         axyes = plt.axes([0.7, 0.05, 0.1, 0.075])
         axno = plt.axes([0.81, 0.05, 0.1, 0.075])
+
+        print(f'Box {idx} of {len(boxes)}: ', end='')
 
         yes = Button(axyes, 'Yes')
         yes.on_clicked(lambda _: button_yes(svm_output, pil_box_img))
