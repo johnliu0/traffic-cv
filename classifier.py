@@ -37,55 +37,61 @@ def train():
     for (dirpath, dirnames, filenames) in walk(config.training_negatives_dir):
         negative_imgs.extend(filenames)
 
-    num_augmentations = 2
+    num_pos_augmentations = 5
+    num_neg_augmentations = 8
     x_train = []
     y_train = []
     num_extracted = 0
-    print('Starting feature extraction')
-    print('Total number of images after augmentation:', num_augmentations * (len(positive_imgs) + len(negative_imgs)))
+
+    print('Starting feature extraction.')
+    print('Total number of positive samples after augmentation:', num_pos_augmentations * (len(positive_imgs) + 1))
+    print('Total number of positive samples after augmentation:', num_neg_augmentations * (len(negative_imgs) + 1))
+
+    # prepare original positive training samples
+    print ('Preparing positive training samples.')
     for positive_img in positive_imgs:
-        imgs = augment.generate(join(config.training_positives_dir, positive_img), target_size=config.convnet_image_input_size, num_imgs=num_augmentations)
-        for i in range(num_augmentations):
+        img = image.load_img(join(config.training_positives_dir, positive_img))
+        img = img.resize(config.convnet_image_input_size)
+        img = image.img_to_array(img)
+        conv_output = convnet.extract_features(img.reshape((1,) + img.shape))
+        x_train.append(conv_output)
+        y_train.append(1)
+
+    # generate positive training samples
+    for positive_img in positive_imgs:
+        imgs = augment.generate(join(config.training_positives_dir, positive_img), target_size=config.convnet_image_input_size, num_imgs=num_pos_augmentations)
+        for i in range(num_pos_augmentations):
             conv_output = convnet.extract_features(imgs[i].reshape((1,) + imgs[i].shape))
             x_train.append(conv_output)
             y_train.append(1)
-        #
-        # img = image.load_img(join(config.training_positives_dir, positive_img))
-        # img = img.resize(config.convnet_image_input_size)
-        # img_arr = image.img_to_array(img)
-        # conv_output = convnet.extract_features(img_arr.reshape((1, ) + img_arr.shape))
-        # x_train.append(conv_output)
-        # y_train.append(1)
 
+    # prepare original negative training samples
+    print ('Preparing negative training samples.')
     for negative_img in negative_imgs:
-        imgs = augment.generate(join(config.training_negatives_dir, negative_img), target_size=config.convnet_image_input_size, num_imgs=num_augmentations)
-        for i in range(num_augmentations):
+        img = image.load_img(join(config.training_negatives_dir, negative_img))
+        img = img.resize(config.convnet_image_input_size)
+        img = image.img_to_array(img)
+        conv_output = convnet.extract_features(img.reshape((1,) + img.shape))
+        x_train.append(conv_output)
+        y_train.append(0)
+
+    # generate negative training samples
+    for negative_img in negative_imgs:
+        imgs = augment.generate(join(config.training_negatives_dir, negative_img), target_size=config.convnet_image_input_size, num_imgs=num_neg_augmentations)
+        for i in range(num_neg_augmentations):
             conv_output = convnet.extract_features(imgs[i].reshape((1,) + imgs[i].shape))
             x_train.append(conv_output)
             y_train.append(0)
 
     x_train = np.asarray(x_train)
     y_train = np.asarray(y_train)
-    print(x_train.shape)
-    print('Training SVM')
+    print('Training SVM.')
     svm.fit(x_train, y_train)
     export_weights(svm, join(config.models_dir, 'svm_weights.joblib'))
 
 def load():
     global svm
     svm = load_weights(join(config.models_dir, 'svm_weights.joblib'))
-    # img = PILImage.open(f'{home}/Desktop/test_image.png')
-    # img = img.convert('RGB')
-    # img = img.resize((150, 150))
-    # img = image.img_to_array(img)
-    # img = img.reshape((1,) + img.shape)
-    # img /= 255.0
-    #
-    # conv_output = convnet.predict(img)
-    # conv_output = conv_output.reshape((1,) + conv_output.shape)
-    #
-    # y = svm.predict(conv_output)
-    # print(y)
 
 def predict(input_data):
     return svm.predict(input_data)

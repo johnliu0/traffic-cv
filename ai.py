@@ -49,7 +49,7 @@ def predict(img_path):
                 box.width,
                 box.height,
                 linewidth=1,
-                color='red',
+                color='green',
                 fill=False
             ))
 
@@ -62,22 +62,55 @@ no_counter = 0
 def button_yes(svm_output, img):
     global yes_counter
     print(f'SVM output: {svm_output}, Actual: 1')
+
+    existing_files = set()
+    for (_, _, file_names) in walk(config.training_positives_dir):
+        for file in file_names:
+            existing_files.add(file)
+
     # svm failed to detect positive sample
     if svm_output == 0:
-        img.save(join(config.training_positives_dir, f'img_{yes_counter}.jpg'))
+        file_name = f'img_{yes_counter}.jpg'
         yes_counter += 1
+        while file_name in existing_files:
+            file_name = f'img_{yes_counter}.jpg'
+            yes_counter += 1
+        img.save(join(config.training_positives_dir, file_name))
     plt.close()
 
 def button_no(svm_output, img):
     global no_counter
     print(f'SVM output: {svm_output}, Actual: 0')
+
+    existing_files = set()
+    for (_, _, file_names) in walk(config.training_negatives_dir):
+        for file in file_names:
+            existing_files.add(file)
+
     # svm failed to detect negative sample
     if svm_output == 1:
-        img.save(join(config.training_negatives_dir, f'img_{no_counter}.jpg'))
+        file_name = f'img_{no_counter}.jpg'
         no_counter += 1
+        while file_name in existing_files:
+            file_name = f'img_{no_counter}.jpg'
+            no_counter += 1
+        img.save(join(config.training_negatives_dir, file_name))
     plt.close()
 
 def mine(img_path):
+    """Tool for making negative and positive training samples.
+
+    The bounding boxes used in the predict method are shown. Press yes or no as
+    appropriate to confirm whether or not a sample is positive or negative. If
+    the SVM was incorrect in its output, then a training sample will be made
+    in the training negatives and positives directory specified in the config.
+
+    Images are called img_x.jpg, where x is a non-negative integer. This tool
+    will not overwrite images, and will instead find the first non-negative
+    integer that it can save to without overwriting an existing file. This
+    allows the tool to seamlessly and easily add to the existing datasets.
+    """
+
     classifier.load()
     raw_img = image.load_img(img_path)
     img = image.img_to_array(raw_img)
@@ -85,14 +118,15 @@ def mine(img_path):
 
     for idx, box in enumerate(boxes):
         box_img = img[box.min_y : box.max_y, box.min_x : box.max_x]
+
+        pil_box_img = image.array_to_img(box_img)
+
         box_img = transform.resize(box_img, config.convnet_image_input_size + (3,))
 
         box_img_reshaped = box_img.reshape((1,) + box_img.shape)
         convnet_output = convnet.extract_features(box_img_reshaped)
         convnet_output = convnet_output.reshape((1,) + convnet_output.shape)
         svm_output = classifier.predict(convnet_output)
-
-        pil_box_img = image.array_to_img(box_img)
 
         plt.imshow(pil_box_img)
         plt.axis('off')
@@ -107,6 +141,4 @@ def mine(img_path):
         no.on_clicked(lambda _: button_no(svm_output, pil_box_img))
 
         plt.show()
-
-    print(counter, '/', len(boxes))
     plt.show()

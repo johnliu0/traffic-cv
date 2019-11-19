@@ -135,8 +135,9 @@ def filter_yellow_color(img):
     blue_to_green_max = 0.73
 
     # get the ratios of green to red and blue to green for all pixels
-    green_to_red = img[:,:,1] / img[:,:,0]
-    blue_to_green = img[:,:,2] / img[:,:,1]
+    # clip the divisor to avoid divide by zero error
+    green_to_red = img[:,:,1] / np.clip(img[:,:,0], 1.0, 255.0)
+    blue_to_green = img[:,:,2] / np.clip(img[:,:,1], 1.0, 255.0)
 
     # mask for pixels that are in the accepted green to red ratio range
     green_to_red_mask = np.bitwise_and(green_to_red >= green_to_red_min,
