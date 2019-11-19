@@ -37,15 +37,15 @@ def train():
     for (dirpath, dirnames, filenames) in walk(config.training_negatives_dir):
         negative_imgs.extend(filenames)
 
-    num_pos_augmentations = 5
-    num_neg_augmentations = 12
+    num_pos_augmentations = 6
+    num_neg_augmentations = 6
     x_train = []
     y_train = []
     num_extracted = 0
 
     print('Starting feature extraction.')
     print('Total number of positive samples after augmentation:', num_pos_augmentations * (len(positive_imgs) + 1))
-    print('Total number of positive samples after augmentation:', num_neg_augmentations * (len(negative_imgs) + 1))
+    print('Total number of negative samples after augmentation:', num_neg_augmentations * (len(negative_imgs) + 1))
 
     # prepare original positive training samples
     print ('Preparing positive training samples.')

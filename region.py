@@ -47,6 +47,16 @@ def propose_boxes(img):
     segments = segmentation.felzenszwalb(img, min_size=30, scale=10)
     print(f'Done in {(time_ns() - timer) / 1000000000}s.')
 
+    # # create a PIL image out of the segments
+    # print('Converting segments to image.')
+    # timer = time_ns()
+    # segmented_img = image.array_to_img(color.label2rgb(segments, image=img, kind='avg'))
+    # print(f'Done in {(time_ns() - timer) / 1000000000}s.')
+    #
+    # plt.imshow(segmented_img)
+    # plt.show()
+
+    # create a mask that indicates the presence of yellow pixels
     print('Creating yellow filter.')
     timer = time_ns()
     img_yellow_mask = filter_yellow_color(img)
@@ -62,21 +72,6 @@ def propose_boxes(img):
             boxes.append(BoundingBox(region, img))
     print(f'Done in {(time_ns() - timer) / 1000000000}s.')
 
-    # ax, (f1, f2) = plt.subplots(1, 2)
-    # f1.axis('off')
-    # f1.imshow(image.array_to_img(img))
-    # f2.axis('off')
-    # f2.imshow(image.array_to_img(img))
-    #
-    # for box in boxes:
-    #     f1.add_patch(patches.Rectangle(
-    #         (box.min_x, box.min_y),
-    #         box.width,
-    #         box.height,
-    #         linewidth=1,
-    #         fill=False,
-    #         color='red'))
-
     print('Merging bounding boxes based on color similarity.')
     timer = time_ns()
     for passes in range(7):
@@ -86,22 +81,12 @@ def propose_boxes(img):
             for j in range(len(boxes) - 1, i, -1):
                 box2 = boxes[j]
                 if intersects(box1, box2):
-                    if compute_color_similarity(box1, box2) > 0.8:
-                        box1.merge(box2)
-                        boxes.pop(j)
+                    if compute_iou(box1, box2) > 0.15:
+                        if compute_color_similarity(box1, box2) > 0.5:
+                            box1.merge(box2)
+                            boxes.pop(j)
             i += 1
     print(f'Done in {(time_ns() - timer) / 1000000000}s.')
-
-    # for box in boxes:
-    #     f2.add_patch(patches.Rectangle(
-    #         (box.min_x, box.min_y),
-    #         box.width,
-    #         box.height,
-    #         linewidth=1,
-    #         fill=False,
-    #         color='red'))
-    #
-    # plt.show()
 
     return boxes
 
@@ -189,7 +174,7 @@ def compute_iou(box1, box2):
     rectangular region that intersect over the union.
 
     Returns:
-        A value between 0 and 1 representing the intersection over union.
+        A value between 0.0 and 1.0 representing the intersection over union.
     """
 
     # compute the amount of intersectionality in each axis
