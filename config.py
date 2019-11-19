@@ -22,6 +22,6 @@ def load_config():
     config.read('.config')
     sect = config['DEFAULT']
 
-    training_positives_dir = expanduser(sect.get('training_positives_dir', '/data/positives'))
-    training_negatives_dir = expanduser(sect.get('training_negatives_dir', '/data/negatives'))
-    models_dir = expanduser(sect.get('models_dir', '/data/models'))
+    training_positives_dir = expanduser(sect.get('training_positives_dir', './data/positives'))
+    training_negatives_dir = expanduser(sect.get('training_negatives_dir', './data/negatives'))
+    models_dir = expanduser(sect.get('models_dir', './data/models'))

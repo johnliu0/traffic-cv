@@ -62,156 +62,48 @@ def propose_boxes(img):
             boxes.append(BoundingBox(region, img))
     print(f'Done in {(time_ns() - timer) / 1000000000}s.')
 
-    ax, (f1, f2) = plt.subplots(1, 2)
-    f1.axis('off')
-    f1.imshow(image.array_to_img(img))
-    f2.axis('off')
-    f2.imshow(image.array_to_img(img))
-
-    for box in boxes:
-        f1.add_patch(patches.Rectangle(
-            (box.min_x, box.min_y),
-            box.width,
-            box.height,
-            linewidth=1,
-            fill=False,
-            color='red'))
-
-
-    for i in range(len(boxes) - 2, 0, -1):
-        box1 = boxes[i]
-        box2 = boxes[i + 1]
-        if intersects(box1, box2):
-            box1.merge(box2)
-            boxes.pop(i + 1)
-
-
-    for box in boxes:
-        f2.add_patch(patches.Rectangle(
-            (box.min_x, box.min_y),
-            box.width,
-            box.height,
-            linewidth=1,
-            fill=False,
-            color='red'))
-
-    plt.show()
-
-    return boxes
-
-    # box = boxes[0]
-    # for j in range(len(boxes) - 1, -1, -1):
-    #     if compute_iou(box, boxes[j]) > 0.1:
-
-
-    # i = 0
-    # for i in range(len(boxes) - 1):
-    #     box1 = boxes[i]
-    #     box2 = boxes[i + 1]
-    #     ax, (f1, f2) = plt.subplots(1, 2)
-    #     f1.imshow(image.array_to_img(img[box1.min_y:box1.max_y, box1.min_x:box1.max_x]))
-    #     f1.axis('off')
-    #     f2.imshow(image.array_to_img(img[box2.min_y:box2.max_y, box2.min_x:box2.max_x]))
-    #     f2.axis('off')
-    #     print('color sim: ', compute_color_similarity(box1, box2))
-    #     plt.show()
-    #     ax = plt.gca()
-    #     ax.add_patch(patches.Rectangle(
+    # ax, (f1, f2) = plt.subplots(1, 2)
+    # f1.axis('off')
+    # f1.imshow(image.array_to_img(img))
+    # f2.axis('off')
+    # f2.imshow(image.array_to_img(img))
+    #
+    # for box in boxes:
+    #     f1.add_patch(patches.Rectangle(
     #         (box.min_x, box.min_y),
     #         box.width,
     #         box.height,
     #         linewidth=1,
     #         fill=False,
     #         color='red'))
-    #     plt.show()
 
+    print('Merging bounding boxes based on color similarity.')
+    timer = time_ns()
+    for passes in range(7):
+        i = 0
+        while i < len(boxes):
+            box1 = boxes[i]
+            for j in range(len(boxes) - 1, i, -1):
+                box2 = boxes[j]
+                if intersects(box1, box2):
+                    if compute_color_similarity(box1, box2) > 0.8:
+                        box1.merge(box2)
+                        boxes.pop(j)
+            i += 1
+    print(f'Done in {(time_ns() - timer) / 1000000000}s.')
 
-
-    # # converted segments into image
-    # segmented_img = color.label2rgb(segments, image=img, kind='avg')
-    #
-    # # extract yellow colors out of both the original image segmented image
-    # img_yellow_mask = filter_yellow_color(img)
-    # segment_yellow_mask = filter_yellow_color(segmented_img)
-    #
-    # # combine the two yellow masks into one
-    # # this allows for higher recall on the bounding box proposals
-    # yellow_mask = img_yellow_mask | segment_yellow_mask
-
-    # prepares region proposals
-
-    # for i in range(len(boxes) - 1, -1, -1):
-    #     # regions should contain yellow pixels
-    #     box = boxes[i]
-    #     num_in_yellow_mask = 0
-    #     for y in range(box.min_y, box.max_y):
-    #         for x in range(box.min_x, box.max_x):
-    #             if yellow_mask[y][x]:
-    #                 num_in_yellow_mask += 1
-    #     if num_in_yellow_mask < 20:
-    #         boxes.pop(i)
-
-    # # propose regions
-    # regions = []
-    # for region in regionprops(segments):
-    #     min_y, min_x, max_y, max_x = region.bbox
-    #     regions.append(BoundingBox(min_x, min_y, max_x, max_y))
-
-
-
-    # for i in range(10):
-    #     region1 = regions[randint(0, len(regions) - 1)]
-    #     region2 = regions[randint(0, len(regions) - 1)]
-    #     plt.imshow(image.array_to_img(segmented_img))
-    #     plt.gca().add_patch(patches.Rectangle(
-    #         (region1.min_x, region1.min_y),
-    #         region1.width,
-    #         region1.height,
-    #         fill=False,
-    #
-    #         edgecolor='red', linewidth=1))
-    #     plt.gca().add_patch(patches.Rectangle(
-    #         (region2.min_x, region2.min_y),
-    #         region2.width,
-    #         region2.height,
-    #         fill=False,
-    #         edgecolor='red', linewidth=1))
-    #     color_similarity(img, region1, region2)
-    #     plt.show()
-
-    # # TODO: this is highly inefficient..
-    # # compare random pairs of regions and attempt to merge them
-    # for j in range(3):
-    #     for i in range(len(regions) - 1, 1, - 1):
-    #         region1 = regions[i]
-    #         region2 = regions[i - 1]
-    #         iou = compute_iou(region1, region2)
-    #         if iou > 0.1:
-    #             regions.pop(i)
-    #             regions[i - 1] = merge_boxes(region1, region2)
-    #     shuffle(regions)
-    #
-    # plt_rects = []
     # for box in boxes:
+    #     f2.add_patch(patches.Rectangle(
+    #         (box.min_x, box.min_y),
+    #         box.width,
+    #         box.height,
+    #         linewidth=1,
+    #         fill=False,
+    #         color='red'))
+    #
+    # plt.show()
 
-        # if region.area > 30:
-        #     min_y, min_x, max_y, max_x = region.bbox
-        #
-            # regions should contain at least some specified ratio of yellow pixels
-            # num_in_yellow_mask = 0
-            # for y in range(min_y, max_y):
-            #     for x in range(min_x, max_x):
-            #         if yellow_mask[y][x]:
-            #             num_in_yellow_mask += 1
-            # yellow_ratio = num_in_yellow_mask / region.area
-            # if yellow_ratio >= 0.6:
-        #
-        # plt_rects.append(
-        #     patches.Rectangle(
-        #         (box.min_x, box.min_y),
-        #         box.max_x - box.min_x,
-        #         box.max_y - box.min_y,
-        #         fill=False, edgecolor='red', linewidth=1))
+    return boxes
 
 def filter_yellow_color(img):
     """Produces a yellow color mask.

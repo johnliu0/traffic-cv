@@ -22,9 +22,15 @@ if __name__ == '__main__':
     parser_predict = subparsers.add_parser('predict', help='attempts to find all traffic lights in an image')
     parser_predict.add_argument('--path', help='path to image', required=True)
 
+    # command: mine; for mining positive and negative examples from a given input image
+    parser_mine = subparsers.add_parser('mine', help='tool for hard mining positive and negative training data')
+    parser_mine.add_argument('--path', help='path to image', required=True)
+
     args = parser.parse_args()
 
     if args.subcmd == 'train':
         ai.train()
     elif args.subcmd == 'predict':
         ai.predict(path.expanduser(args.path))
+    elif args.subcmd == 'mine':
+        ai.mine(path.expanduser(args.path))
