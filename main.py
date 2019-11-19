@@ -25,6 +25,7 @@ if __name__ == '__main__':
     # command: mine; for mining positive and negative examples from a given input image
     parser_mine = subparsers.add_parser('mine', help='tool for hard mining positive and negative training data')
     parser_mine.add_argument('--path', help='path to image', required=True)
+    parser_mine.add_argument('--use-predicted', help='whether or not to use the boxes that were predicted as positive samples', action='store_true')
 
     args = parser.parse_args()
 
@@ -33,4 +34,4 @@ if __name__ == '__main__':
     elif args.subcmd == 'predict':
         ai.predict(path.expanduser(args.path))
     elif args.subcmd == 'mine':
-        ai.mine(path.expanduser(args.path))
+        ai.mine(path.expanduser(args.path), args.use_predicted)
