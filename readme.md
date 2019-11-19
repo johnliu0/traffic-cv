@@ -30,8 +30,8 @@ I split the project develop into several major phases. Each phase introduces a m
 Getting out a minimally viable but structurally sound product here is important. The goal here is to work on a basic system that can detect and identify traffic lights in a given image. I implement Ross Girshick's (and others) R-CNN method here.
 
 - [ ] Basic data collection (at least a few hundred images of traffic lights)
-- [ ] Region proposals using Felzenszwalb's image segmentation algorithm
-- [ ] Build upon a pretrained convnet
+- [x] Region proposals using Felzenszwalb's image segmentation algorithm
+- [x] Build upon a pretrained convnet
 - [ ] Training a single SVM to recognize whether or not a traffic light exists in an image (binary classification)
 
 ## Phase 2
