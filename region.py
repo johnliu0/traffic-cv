@@ -44,17 +44,14 @@ def propose_boxes(img):
     # segment image using Felzenszwalb's Image Segmentation algorithm
     print('Applying Felzenszwalb\'s algorithm.')
     timer = time_ns()
-    segments = segmentation.felzenszwalb(img, min_size=30, scale=10)
+    segments = segmentation.felzenszwalb(img, scale=5)
     print(f'Done in {(time_ns() - timer) / 1000000000}s.')
 
-    # # create a PIL image out of the segments
+    # # convert segments to an image
     # print('Converting segments to image.')
     # timer = time_ns()
-    # segmented_img = image.array_to_img(color.label2rgb(segments, image=img, kind='avg'))
+    # segmented_img = color.label2rgb(segments, image=img, kind='avg')
     # print(f'Done in {(time_ns() - timer) / 1000000000}s.')
-    #
-    # plt.imshow(segmented_img)
-    # plt.show()
 
     # create a mask that indicates the presence of yellow pixels
     print('Creating yellow filter.')
@@ -81,12 +78,17 @@ def propose_boxes(img):
             for j in range(len(boxes) - 1, i, -1):
                 box2 = boxes[j]
                 if intersects(box1, box2):
-                    if compute_iou(box1, box2) > 0.15:
-                        if compute_color_similarity(box1, box2) > 0.5:
-                            box1.merge(box2)
-                            boxes.pop(j)
+                    iou = compute_iou(box1, box2)
+                    if (compute_color_similarity(box1, box2) > 0.8
+                        or measure_region_fill(box1, box2) > 0.8):
+                        box1.merge(box2)
+                        boxes.pop(j)
             i += 1
     print(f'Done in {(time_ns() - timer) / 1000000000}s.')
+
+    # for i in range(len(boxes) - 1, -1, -1):
+    #     if boxes[i].area <= 400:
+    #         boxes.pop(i)
 
     return boxes
 

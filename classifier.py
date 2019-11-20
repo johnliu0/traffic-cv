@@ -37,8 +37,8 @@ def train():
     for (dirpath, dirnames, filenames) in walk(config.training_negatives_dir):
         negative_imgs.extend(filenames)
 
-    num_pos_augmentations = 6
-    num_neg_augmentations = 6
+    num_pos_augmentations = 100
+    num_neg_augmentations = 40
     x_train = []
     y_train = []
     num_extracted = 0
@@ -59,7 +59,7 @@ def train():
 
     # generate positive training samples
     for positive_img in positive_imgs:
-        imgs = augment.generate(join(config.training_positives_dir, positive_img), target_size=config.convnet_image_input_size, num_imgs=num_pos_augmentations)
+        imgs = augment.generate_pos(join(config.training_positives_dir, positive_img), target_size=config.convnet_image_input_size, num_imgs=num_pos_augmentations)
         for i in range(num_pos_augmentations):
             conv_output = convnet.extract_features(imgs[i].reshape((1,) + imgs[i].shape))
             x_train.append(conv_output)
@@ -77,7 +77,7 @@ def train():
 
     # generate negative training samples
     for negative_img in negative_imgs:
-        imgs = augment.generate(join(config.training_negatives_dir, negative_img), target_size=config.convnet_image_input_size, num_imgs=num_neg_augmentations)
+        imgs = augment.generate_neg(join(config.training_negatives_dir, negative_img), target_size=config.convnet_image_input_size, num_imgs=num_neg_augmentations)
         for i in range(num_neg_augmentations):
             conv_output = convnet.extract_features(imgs[i].reshape((1,) + imgs[i].shape))
             x_train.append(conv_output)
