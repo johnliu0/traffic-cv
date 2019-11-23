@@ -28,16 +28,28 @@ def train():
 def predict(img_path):
     classifier.load()
     raw_img = image.load_img(img_path)
-    img = image.img_to_array(raw_img)
+
+    print(raw_img.size)
+    print(f'Input image shape:', raw_img.size)
+    aspect_ratio = raw_img.size[0] / raw_img.size[1]
+
+    # scale images to desired size
+    new_height = 480
+    new_width = int(np.floor(new_height * aspect_ratio))
+    print(f'Resized to: ({new_width}, {new_height})')
+    resized_img = raw_img.resize((new_width, new_height))
+
+    # propose bounding box regions for image
+    img = image.img_to_array(resized_img)
     boxes = region.propose_boxes(img)
     detected_boxes = []
 
     ax, (f1, f2) = plt.subplots(1, 2)
-    f1.imshow(raw_img)
+    f1.imshow(resized_img)
     f1.set_xlabel('All')
     f1.set_yticklabels([])
     f1.set_xticklabels([])
-    f2.imshow(raw_img)
+    f2.imshow(resized_img)
     f2.set_xlabel('Predicted')
     f2.set_yticklabels([])
     f2.set_xticklabels([])

@@ -37,8 +37,8 @@ def train():
     for (dirpath, dirnames, filenames) in walk(config.training_negatives_dir):
         negative_imgs.extend(filenames)
 
-    num_pos_augmentations = 100
-    num_neg_augmentations = 40
+    num_pos_augmentations = 6
+    num_neg_augmentations = 6
     x_train = []
     y_train = []
     num_extracted = 0

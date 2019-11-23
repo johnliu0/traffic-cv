@@ -41,55 +41,136 @@ def propose_boxes(img):
         the image.
     """
 
+    img_area = img.shape[0] * img.shape[1]
+    total_time = 0
+
     # segment image using Felzenszwalb's Image Segmentation algorithm
-    print('Applying Felzenszwalb\'s algorithm.')
+    print('Applying Felzenszwalb\'s algorithm. ', end='')
     timer = time_ns()
-    segments = segmentation.felzenszwalb(img, scale=5)
-    print(f'Done in {(time_ns() - timer) / 1000000000}s.')
+    segments = segmentation.felzenszwalb(img, min_size=60, scale=4)
+    elapsed = time_ns() - timer
+    total_time += elapsed
+    print(f'Done in {elapsed / 1000000000}s.')
 
     # # convert segments to an image
     # print('Converting segments to image.')
     # timer = time_ns()
     # segmented_img = color.label2rgb(segments, image=img, kind='avg')
+    # plt.subplot(121)
+    # plt.imshow(image.array_to_img(img))
+    # plt.subplot(122)
+    # plt.imshow(image.array_to_img(segmented_img))
+    # plt.show()
     # print(f'Done in {(time_ns() - timer) / 1000000000}s.')
 
     # create a mask that indicates the presence of yellow pixels
-    print('Creating yellow filter.')
+    print('Creating yellow filter. ', end='')
     timer = time_ns()
     img_yellow_mask = filter_yellow_color(img)
-    print(f'Done in {(time_ns() - timer) / 1000000000}s.')
+    elapsed = time_ns() - timer
+    total_time += elapsed
+    print(f'Done in {elapsed / 1000000000}s.')
 
     # converts regions from skimage.measure.regionprops into BoundingBox objects
-    print('Generating initial bounding boxes.')
+    print('Generating initial bounding boxes. ', end='')
     timer = time_ns()
     boxes = []
     for region in regionprops(segments):
         min_y, min_x, max_y, max_x = region.bbox
+
+        # traffic lights are tall rectangles
+        height_width_ratio = (max_y - min_y) / (max_x - min_x)
+        if height_width_ratio < 1.0 or height_width_ratio > 4.5:
+            continue
+
+        # traffic lights are yellow in my area
+        # therefore the bounding box should contain yellow pixels
         if np.any(img_yellow_mask[min_y:max_y,min_x:max_x]):
-            boxes.append(BoundingBox(region, img))
-    print(f'Done in {(time_ns() - timer) / 1000000000}s.')
+            boxes.append(BoundingBox(
+                min_x, min_y, max_x, max_y,
+                region.area,
+                compute_color_histogram(img, region.coords, normalize=True)))
+    elapsed = time_ns() - timer
+    total_time += elapsed
+    print(f'Done in {elapsed / 1000000000}s.')
 
-    print('Merging bounding boxes based on color similarity.')
+    # print(len(boxes))
+    # plt.gcf().set_size_inches(16, 9)
+    # plt.imshow(image.array_to_img(img))
+    # for idx, box in enumerate(boxes):
+    #     plt.gca().add_patch(patches.Rectangle(
+    #         (box.min_x, box.min_y),
+    #         box.width,
+    #         box.height,
+    #         linewidth=1,
+    #         color='red',
+    #         fill=False))
+    # plt.show()
+
+    # generate an initial set of similarity scores for all pairs of boxes
+    # similarity data is in the format (i, j, score)
+    # where i, j denote the indices of the box they refer to
+    print('Generating initial set of similarity scores. ', end='')
     timer = time_ns()
-    for passes in range(7):
-        i = 0
-        while i < len(boxes):
-            box1 = boxes[i]
-            for j in range(len(boxes) - 1, i, -1):
-                box2 = boxes[j]
-                if intersects(box1, box2):
-                    iou = compute_iou(box1, box2)
-                    if (compute_color_similarity(box1, box2) > 0.8
-                        or measure_region_fill(box1, box2) > 0.8):
-                        box1.merge(box2)
-                        boxes.pop(j)
-            i += 1
-    print(f'Done in {(time_ns() - timer) / 1000000000}s.')
+    simil_set = []
+    visited = [False] * len(boxes)
+    for i in range(len(boxes)):
+        for j in range(i + 1, len(boxes)):
+            simil_set.append((i, j, compute_similarity(boxes[i], boxes[j], img_area)))
+    elapsed = time_ns() - timer
+    total_time += elapsed
+    print(f'Done in {elapsed / 1000000000}s.')
 
-    # for i in range(len(boxes) - 1, -1, -1):
-    #     if boxes[i].area <= 400:
-    #         boxes.pop(i)
+    # continuously merge the two most similar regions until only one remains
+    print('Merging regions. ', end='')
+    timer = time_ns()
+    while len(simil_set) > 0:
+        # find the two most similar regions
+        idx_simil_max = 0
+        for i in range(1, len(simil_set)):
+            if simil_set[i][2] > simil_set[idx_simil_max][2]:
+                idx_simil_max = i
+        idx1 = simil_set[idx_simil_max][0]
+        idx2 = simil_set[idx_simil_max][1]
 
+        # find and remove all similarities that used either of the two boxes
+        for i in range(len(simil_set) - 1, -1, -1):
+            if (simil_set[i][0] == idx1 or simil_set[i][0] == idx2 or
+                simil_set[i][1] == idx1 or simil_set[i][1] == idx2):
+                simil_set.pop(i)
+
+        # merge the two boxes together
+        new_box = merge_boxes(boxes[idx1], boxes[idx2])
+
+        # mark these two boxes as visited
+        visited[idx1] = True
+        visited[idx2] = True
+
+        # generate new similarities with merged box
+        for i in range(len(boxes)):
+            if not visited[i]:
+                simil_set.append((i, len(boxes), compute_similarity(new_box, boxes[i], img_area)))
+
+        # add merged box to boxes list and visited list
+        boxes.append(new_box)
+        visited.append(False)
+    elapsed = time_ns() - timer
+    total_time += elapsed
+    print(f'Done in {elapsed / 1000000000}s.')
+
+    # further remove bounding boxes unlikely to be traffic lights
+    print('Pruning regions. ', end='')
+    timer = time_ns()
+    for i in range(len(boxes) - 1, -1, -1):
+        # traffic lights are tall rectangles
+        height_width_ratio = boxes[i].height / boxes[i].width
+        if height_width_ratio < 1.0 or height_width_ratio > 4.5:
+            boxes.pop(i)
+    elapsed = time_ns() - timer
+    total_time += elapsed
+    print(f'Done in {elapsed / 1000000000}s.')
+
+    print(f'Region proposal total time: {total_time / 1000000000}s.')
     return boxes
 
 def filter_yellow_color(img):
@@ -157,49 +238,36 @@ def filter_to_image(filter):
                 img[y][x] = [255, 255, 0]
     return img
 
-def normalize_arr(arr):
-    """Normalizes a numpy array.
+def compute_similarity(box1, box2, img_area):
+    """Computes a score for similarity between two boxes.
 
-    All values in the array are divided by the sum of all values. This produces
-    an array whose sum is exactly 1. If an array contains only zeros, it will
-    not be modified.
-    """
-
-    arr_sum = sum(arr)
-    if arr_sum != 0:
-        arr /= arr_sum
-
-def compute_iou(box1, box2):
-    """Computes the intersection over union.
-
-    The intersection and union are computed as number of pixels in the
-    rectangular region that intersect over the union.
+    Args:
+        box1: A BoundingBox object.
+        box2: A BoundingBox object.
+        img_area: The number of pixels in the original image.
 
     Returns:
-        A value between 0.0 and 1.0 representing the intersection over union.
+        A score between 0.0 and 2.0.
     """
 
-    # compute the amount of intersectionality in each axis
-    # a negative value indicates that the regions do not intersect on the axis
-    # a positive value indicates the amount that the regions intersect
-    # i.e. the length of intersection of two line segments on a line
-    x_intersection_len = (box1.width + box2.width) - (max(box1.max_x, box2.max_x) - min(box1.min_x, box2.min_x))
-    y_intersection_len = (box1.height + box2.height) - (max(box1.max_y, box2.max_y) - min(box1.min_y, box2.min_y))
-    if x_intersection_len > 0.0 and y_intersection_len > 0.0:
-        intersection_area = x_intersection_len * y_intersection_len
-        # inclusion-exclusion principle gives the union of two intersecting
-        # regions A, B as A + B - C where C is the intersection of A and B
-        return intersection_area / (box1.area + box2.area - intersection_area)
-    return 0.0
+    # the fill, size, and color metrics as described in the original paper are
+    # used here, the texture metric is not used
+    # note that the size and fill metric was combined
+    min_x, min_y, max_x, max_y = fit_bounding_box(box1, box2)
+    size_and_fill_score = 1 - (max_x - min_x) * (max_y - min_y) / (img_area)
+    color_score = np.sum(np.minimum(box1.color_histogram, box2.color_histogram))
+    return size_and_fill_score + color_score
 
-def compute_color_histograms(img, nbins=16, normalize=False):
-    """Computes a color histogram for a given image.
+def compute_color_histogram(img, coords, nbins=25, normalize=False):
+    """Computes a color histogram for a given image and a list of coordinates
+    of pixels to use for the histogram.
 
     Each color channel in the image is computed separately. An array of the
     histogram computed for each channel is returned.
 
     Args:
         img: A numpy image in the form (height, width, 3).
+        coords: Coordinates list of the form (row, col).
         n_bins: Number of parts to divide the histogram data into.
 
     Returns:
@@ -212,65 +280,13 @@ def compute_color_histograms(img, nbins=16, normalize=False):
     bin_width = 256.0 / nbins
     hist = np.zeros((channels, nbins), dtype='float64')
     for c in range(channels):
-        for y in range(height):
-            for x in range(width):
-                hist[c,int(img[y,x,c] / nbins)] += 1.0
+        for y, x in coords:
+            hist[c,int(img[y,x,c] / nbins)] += 1.0
     if normalize:
-        for c in range(channels):
-            normalize_arr(hist[c])
+        arr_sum = np.sum(hist)
+        if arr_sum != 0:
+            hist /= arr_sum
     return hist
-
-def compute_color_similarity(box1, box2):
-    """Computes the similarity in color between two regions.
-
-    Compares the color histograms in the provided BoundingBox's separately for
-    each channel.
-
-    Returns:
-        A value between 0.0 and 1.0 representing the color similarity, where
-        0.0 indicates no similarity, and 1.0 indicates equal color distribution.
-    """
-
-    score = 0
-    for i in range(BoundingBox.color_hist_nbins):
-        # take the percentage filled by the smaller bar in each histogram
-        r1, r2 = box1.color_histograms[0][i], box2.color_histograms[0][i]
-        g1, g2 = box1.color_histograms[1][i], box2.color_histograms[1][i]
-        b1, b2 = box1.color_histograms[2][i], box2.color_histograms[2][i]
-        score += min(r1, r2)
-        score += min(g1, g2)
-        score += min(b1, b2)
-
-    return score / 3
-
-def intersects(box1, box2):
-    """Determines whether or not two boxes intersect.
-
-    Intersection is true only when the boxes share at least one pixel. Boxes
-    that are touching along their edges are not considered intersecting.
-
-    Returns:
-        A boolean representing whether or not two boxes intersect.
-    """
-
-    if ((box2.min_x > box1.min_x and box2.min_x < box1.max_x) or
-        (box1.min_x > box2.min_x and box1.min_x < box2.max_x)):
-        if ((box2.min_y > box1.min_y and box2.min_y < box1.max_y) or
-            (box1.min_y > box2.min_y and box1.min_y < box2.max_y)):
-                return True
-    return False
-
-def measure_region_fill(box1, box2):
-    """Computes how well two regions fit into eachother.
-
-    Returns:
-        A value between 0.0 and 1.0 specifying the ratio of the combined shape
-        area to the bounding box area.
-    """
-
-    min_x, min_y, max_x, max_y = fit_bounding_box(box1, box2)
-    return ((box1.region_area + box2.region_area)
-        / ((max_x - min_x) * (max_y - min_y)))
 
 def fit_bounding_box(box1, box2):
     """Computes the minimum enclosing box of the two given boxes.
@@ -285,22 +301,22 @@ def fit_bounding_box(box1, box2):
         max(box1.max_x, box2.max_x),
         max(box1.max_y, box2.max_y))
 
-# applies a 3x3 median filter to the input and then
-# uses a flood fill to remove small patches of yellow
-def remove_noise(filter, in_place=False):
-    shape = filter.shape
-    filtered = filter if in_place else np.full(shape, False)
-    # note that the edges are False
-    for y in range(1, shape[0] - 1):
-        for x in range(1, shape[1] - 1):
-            num_true = 0
-            for i in range(y - 1, y + 2):
-                for j in range(x - 1, x + 2):
-                    if filter[i][j]:
-                        num_true += 1
-            if num_true >= 5:
-                filtered[y][x] = True
-    return filtered
+def merge_boxes(box1, box2):
+    """Merges two BoundingBox objects together.
+
+    Args:
+        box1: A BoundingBox object.
+        box2: A BoundingBox object.
+    Returns:
+        A merged BoundingBox.
+    """
+
+    return BoundingBox(
+        *fit_bounding_box(box1, box2),
+        box1.region_area + box2.region_area,
+        (float(box1.region_area) * box1.color_histogram +
+            float(box2.region_area) * box2.color_histogram) /
+            float(box1.region_area + box2.region_area))
 
 class BoundingBox:
     """Contains region information.
@@ -326,15 +342,7 @@ class BoundingBox:
             channel.
     """
 
-    color_hist_nbins = 16
-
-    def __init__(self, region, img):
-        """
-        Args:
-            region: a region object from skimage.measure.regionprops
-        """
-
-        min_y, min_x, max_y, max_x = region.bbox
+    def __init__(self, min_x, min_y, max_x, max_y, region_area, color_histogram):
         self.min_x = min_x
         self.min_y = min_y
         self.max_x = max_x
@@ -342,32 +350,8 @@ class BoundingBox:
         self.width = max_x - min_x
         self.height = max_y - min_y
         self.area = self.width * self.height
-        self.region_area = region.area
-        self.color_histograms = compute_color_histograms(img[min_y:max_y,min_x:max_x], nbins=BoundingBox.color_hist_nbins, normalize=True)
-
-    def merge(self, box):
-        """Merges another BoundingBox into this object.
-
-        Dimensions and min and max coordinates are expanded to fit both boxes.
-        The color histograms are added together and normalized. The attributes
-        of this object will change, the BoundingBox provided in the argument is
-        not modified.
-
-        Args:
-            box: BoundingBox to merge into this one.
-        """
-
-        self.min_x = min(self.min_x, box.min_x)
-        self.min_y = min(self.min_y, box.min_y)
-        self.max_x = max(self.max_x, box.max_x)
-        self.max_y = max(self.max_y, box.max_y)
-        self.width = self.max_x - self.min_x
-        self.height = self.max_y - self.min_y
-        self.area = self.width * self.height
-        self.region_area += box.region_area
-        self.color_histograms += box.color_histograms
-        for c in range(self.color_histograms.shape[0]):
-            normalize_arr(self.color_histograms[c])
+        self.region_area = region_area
+        self.color_histogram = color_histogram
 
     def to_string(self):
         """Returns a string containing details about this BoundingBox.
@@ -376,3 +360,44 @@ class BoundingBox:
         """
 
         return(f'BoundingBox(min_x: {self.min_x}, min_y: {self.min_y}, max_x: {self.max_x}, max_y: {self.max_y}), width: {self.width}, height: {self.height}, area: {self.area}, bounded_area: {self.bounded_area})')
+
+
+# def intersects(box1, box2):
+#     """Determines whether or not two boxes intersect.
+#
+#     Intersection is true only when the boxes share at least one pixel. Boxes
+#     that are touching along their edges are not considered intersecting.
+#
+#     Returns:
+#         A boolean representing whether or not two boxes intersect.
+#     """
+#
+#     if ((box2.min_x > box1.min_x and box2.min_x < box1.max_x) or
+#         (box1.min_x > box2.min_x and box1.min_x < box2.max_x)):
+#         if ((box2.min_y > box1.min_y and box2.min_y < box1.max_y) or
+#             (box1.min_y > box2.min_y and box1.min_y < box2.max_y)):
+#                 return True
+#     return False
+
+# def compute_iou(box1, box2):
+#     """Computes the intersection over union.
+#
+#     The intersection and union are computed as number of pixels in the
+#     rectangular region that intersect over the union.
+#
+#     Returns:
+#         A value between 0.0 and 1.0 representing the intersection over union.
+#     """
+#
+#     # compute the amount of intersectionality in each axis
+#     # a negative value indicates that the regions do not intersect on the axis
+#     # a positive value indicates the amount that the regions intersect
+#     # i.e. the length of intersection of two line segments on a line
+#     x_intersection_len = (box1.width + box2.width) - (max(box1.max_x, box2.max_x) - min(box1.min_x, box2.min_x))
+#     y_intersection_len = (box1.height + box2.height) - (max(box1.max_y, box2.max_y) - min(box1.min_y, box2.min_y))
+#     if x_intersection_len > 0.0 and y_intersection_len > 0.0:
+#         intersection_area = x_intersection_len * y_intersection_len
+#         # inclusion-exclusion principle gives the union of two intersecting
+#         # regions A, B as A + B - C where C is the intersection of A and B
+#         return intersection_area / (box1.area + box2.area - intersection_area)
+#     return 0.0
