@@ -15,3 +15,7 @@ conv_base = VGG16(
 
 def extract_features(img):
     return conv_base.predict(img).flatten()
+
+def get_output_length():
+    """Returns the length of the convnet output."""
+    return conv_base.layers[-1].output_shape[-1]

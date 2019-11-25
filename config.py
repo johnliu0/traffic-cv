@@ -18,6 +18,8 @@ def load_config():
     global training_positives_dir
     global training_negatives_dir
     global models_dir
+    global input_image_target_height
+    global convnet_image_input_size
 
     config = configparser.ConfigParser()
     config.read('.config')
@@ -28,5 +30,6 @@ def load_config():
     training_negatives_dir = expanduser(sect.get('training_negatives_dir', './data/negatives'))
     models_dir = expanduser(sect.get('models_dir', './data/models'))
     input_image_target_height = int(sect.get('input_image_target_height', 640))
+
     size = int(sect.get('convnet_input_target_size', 32))
     convnet_image_input_size = (size, size)

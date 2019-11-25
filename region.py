@@ -47,12 +47,12 @@ def propose_boxes(img):
     # segment image using Felzenszwalb's Image Segmentation algorithm
     print('Applying Felzenszwalb\'s algorithm. ', end='')
     timer = time_ns()
-    segments = segmentation.felzenszwalb(img, min_size=60, scale=4)
+    segments = segmentation.felzenszwalb(img, min_size=50)
     elapsed = time_ns() - timer
     total_time += elapsed
     print(f'Done in {elapsed / 1000000000}s.')
 
-    # # convert segments to an image
+    # convert segments to an image
     # print('Converting segments to image.')
     # timer = time_ns()
     # segmented_img = color.label2rgb(segments, image=img, kind='avg')
