@@ -12,3 +12,12 @@ training_negatives_dir = ./data/negatives
 
 # directory where machine learning model weights are saved
 models_dir = ./data/models
+
+# height in pixels to scale input images to, aspect ratio with width is kept
+# a low value allows the system to run much faster but with less accuracy
+input_image_target_height = 640
+
+# size in pixels of the square input region to the convnet
+# note that the size should be at least 32; this is a restriction of the VGG16
+# pretrained convnet base that we use
+convnet_input_target_size = 32
