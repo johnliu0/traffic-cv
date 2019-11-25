@@ -29,15 +29,8 @@ def predict(img_path):
     classifier.load()
     raw_img = image.load_img(img_path)
 
-    print(raw_img.size)
-    print(f'Input image shape:', raw_img.size)
-    aspect_ratio = raw_img.size[0] / raw_img.size[1]
-
-    # scale images to desired size
-    new_height = 480
-    new_width = int(np.floor(new_height * aspect_ratio))
-    print(f'Resized to: ({new_width}, {new_height})')
-    resized_img = raw_img.resize((new_width, new_height))
+    # scale image to desired size
+    resized_img = resize_image(raw_img, height=720)
 
     # propose bounding box regions for image
     img = image.img_to_array(resized_img)
@@ -149,7 +142,10 @@ def mine(img_path, use_predicted=False):
 
     classifier.load()
     raw_img = image.load_img(img_path)
-    img = image.img_to_array(raw_img)
+    
+    # scale image to desired size
+    resized_img = resize_image(raw_img, height=720)
+    img = image.img_to_array(resized_img)
     boxes = region.propose_boxes(img)
     shown_boxes = []
 
@@ -185,3 +181,12 @@ def mine(img_path, use_predicted=False):
         no.on_clicked(lambda _: button_no(svm_output, pil_box_img))
 
         plt.show()
+
+def resize_image(img, height=640):
+    """Resizes a PIL image to a specified height while keeping the aspect ratio
+    the same.
+    """
+
+    aspect_ratio = img.size[0] / img.size[1]
+    width = int(np.floor(height * aspect_ratio))
+    return img.resize((width, height))
