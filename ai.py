@@ -39,13 +39,16 @@ def predict(img_path):
 
     ax, (f1, f2) = plt.subplots(1, 2)
     f1.imshow(resized_img)
-    f1.set_xlabel('All')
+    f1.set_xlabel('Proposed regions')
     f1.set_yticklabels([])
     f1.set_xticklabels([])
     f2.imshow(resized_img)
     f2.set_xlabel('Predicted')
     f2.set_yticklabels([])
     f2.set_xticklabels([])
+
+    print('Extracting features from regions and classifying. ', end='')
+    timer = time_ns()
 
     counter = 0
     for idx, box in enumerate(boxes):
@@ -74,7 +77,7 @@ def predict(img_path):
                 color='green',
                 fill=False
             ))
-
+    print(f'Done in {(time_ns() - timer) / 1000000000}s.')
     print(counter, '/', len(boxes))
     plt.show()
 
